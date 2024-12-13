@@ -5,6 +5,7 @@
 Simple code completion powered by [Ollama](https://ollama.com/)
 
 Click to view the demo video:
+
 [![Watch the video](https://img.youtube.com/vi/e35kn6X-754/0.jpg)](https://youtu.be/e35kn6X-754)
 
 
