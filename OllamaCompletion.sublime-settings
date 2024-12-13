@@ -1,0 +1,7 @@
+{
+    "model": "codellama",
+    "api_url": "http://localhost:11434",
+    "completion_delay": 0.5,
+    "max_context_length": 1000,
+    "auto_suggest": true
+}
