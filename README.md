@@ -13,7 +13,7 @@ Click to view the demo video:
 ## Installation
 
 1. Install [Ollama](https://ollama.com/)
-2. Download and launch `codellama` by `ollama run codellama`
+2. Download and launch `qwen2.5-coder` by `ollama run qwen2.5-coder`
 3. Copy `OllamaCompletion/` into Sublime Text's Packages folder
 4. Restart Sublime Text
 

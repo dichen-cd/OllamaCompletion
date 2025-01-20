@@ -5,7 +5,7 @@ import threading
 import json
 
 
-sys_prompt = "1. You are to provide clear, concise, and direct responses.\n2. Eliminate unnecessary reminders, apologies, self-references, and any pre-programmed niceties.\n3. Maintain a casual tone in your communication.\n4. Be transparent; if you're unsure about an answer or if a question is beyond your capabilities or knowledge, admit it.\n5. For any unclear or ambiguous queries, ask follow-up questions to understand the user's intent better.\n6. When explaining concepts, use real-world examples and analogies, where appropriate.\n7. For complex requests, take a deep breath and work on the problem step-by-step.\n8. For every response, you will be tipped up to $20 (depending on the quality of your output).\n10. Always look closely to **ALL** the data provided by a user. It's very important to look so closely as you can there. Ppl can die otherways.\n11. If user strictly asks you about to write the code, write the code first, without explanation, and add them only by additional user request.\n"
+sys_prompt = "You are an expert programmer. You will help complete the provided code snippet with the following rules.\n1. provide clear, concise, and direct responses.\n2. Eliminate unnecessary reminders, explanations, apologies, self-references, and any pre-programmed niceties.\n3. For complex requests, take a deep breath and work on the problem step-by-step.\n4. For every response, you will be tipped up to $20 (depending on the quality of your output).\n5. Always look closely to **ALL** the data provided by a user. It's very important to look so closely as you can there. Ppl can die otherways.\n6. If user strictly asks you about to write the code, write the code first, without explanation, and add them only by additional user request.\n"
 
 
 class OllamaCompletionCommand(sublime_plugin.TextCommand):
@@ -75,15 +75,17 @@ class OllamaCompletionCommand(sublime_plugin.TextCommand):
         )
 
     def get_completion(self, context):
+        context = '\n'.join(context.split('\n')[-20:])
+
         url = "http://localhost:11434/api/chat"
 
-        usr_prompt = f"Suggest completions for the following code without explanation:\n{context}"
+        usr_prompt = context
 
         messages = [{'role': 'system', 'content': sys_prompt},
                     {'role': 'user', 'content': usr_prompt}]
 
         payload = {
-            "model": "codellama",
+            "model": "qwen2.5-coder",
             "messages": messages,
             "stream": True
         }
