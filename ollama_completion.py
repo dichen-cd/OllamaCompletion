@@ -3,9 +3,10 @@ import sublime_plugin
 import requests
 import threading
 import json
+import re
 
 
-sys_prompt = "You are an expert programmer. You will help complete the provided code snippet with the following rules.\n1. provide clear, concise, and direct responses.\n2. Eliminate unnecessary reminders, explanations, apologies, self-references, and any pre-programmed niceties.\n3. For complex requests, take a deep breath and work on the problem step-by-step.\n4. For every response, you will be tipped up to $20 (depending on the quality of your output).\n5. Always look closely to **ALL** the data provided by a user. It's very important to look so closely as you can there. Ppl can die otherways.\n6. If user strictly asks you about to write the code, write the code first, without explanation, and add them only by additional user request.\n"
+sys_prompt = "You are an expert programmer. You will help complete the provided code snippet with the following rules.\n1. Complete the code wrapped with <code> and </code>.\n2. You may reference any symbols defined in this file enclosed in <ref> and </ref> tags based on your needs.\n3. provide clear, concise, and direct responses.\n4. Eliminate unnecessary reminders, explanations, apologies, self-references, and any pre-programmed niceties.\n5. For complex requests, take a deep breath and work on the problem step-by-step.\n6. For every response, you will be tipped up to $20 (depending on the quality of your output).\n7. Always look closely to **ALL** the data provided by a user. It's very important to look so closely as you can there. Ppl can die otherways.\n8. If user strictly asks you about to write the code, write the code first, without explanation, and add them only by additional user request.\n"
 
 
 class OllamaCompletionCommand(sublime_plugin.TextCommand):
@@ -17,12 +18,56 @@ class OllamaCompletionCommand(sublime_plugin.TextCommand):
         self.completion_ready = threading.Event()
         self.current_completions = None
 
-    def run(self, edit):
+    def get_context(self):
         # Get current cursor position
         sel = self.view.sel()[0]
 
-        # Get context (previous lines)
-        context = self.view.substr(sublime.Region(0, sel.end()))
+        # Get context snippet (previous lines)
+        context_snippet = self.view.substr(sublime.Region(0, sel.end())).split('\n')[-10:]
+
+        # # Extract imports
+        # file_content = self.view.substr(sublime.Region(0, self.view.size()))
+        # imports = self._extract_imports(file_content)
+
+        # Extract defined symbols
+        # symbols = self._extract_symbols(file_content)
+        # symbols = [x[1] for x in self.view.symbols()]
+        symbols = list(set([x.name for x in self.view.indexed_symbol_regions()]))
+
+        return {
+            'symbols': symbols,
+            'snippet': '\n'.join(context_snippet)
+        }
+
+    def _extract_imports(self, content):
+        # Extract import statements
+        import_pattern = r'^(?:from\s+[\w.]+\s+)?import\s+(?:[\w.]+(?:\s+as\s+\w+)?(?:\s*,\s*[\w.]+(?:\s+as\s+\w+)?)*)'
+        imports = re.finditer(import_pattern, content, re.MULTILINE)
+        return [m.group(0) for m in imports]
+
+    def _extract_symbols(self, content):
+        symbols = []
+
+        # Extract class definitions
+        class_pattern = r'class\s+(\w+)(?:\([^)]*\))?:'
+        classes = re.finditer(class_pattern, content)
+        symbols.extend([{'type': 'class', 'name': m.group(1)} for m in classes])
+
+        # Extract function definitions
+        func_pattern = r'def\s+(\w+)\s*\([^)]*\):'
+        funcs = re.finditer(func_pattern, content)
+        symbols.extend([{'type': 'function', 'name': m.group(1)} for m in funcs])
+
+        # Extract variable assignments
+        var_pattern = r'^(\w+)\s*='
+        vars = re.finditer(var_pattern, content, re.MULTILINE)
+        symbols.extend([{'type': 'variable', 'name': m.group(1)} for m in vars])
+
+        return symbols
+
+
+    def run(self, edit):
+        context = self.get_context()
 
         # Pop-up console
         window = self.view.window()
@@ -43,7 +88,6 @@ class OllamaCompletionCommand(sublime_plugin.TextCommand):
         self.console.run_command('append', {'characters': ">>> Ollama is thinking... \n"})
 
         # Call Ollama API
-        # completions = self.get_completion(context)
         self.generate_completions_async(context)
 
     def handle_completion_selected(self, idx, completions):
@@ -75,11 +119,10 @@ class OllamaCompletionCommand(sublime_plugin.TextCommand):
         )
 
     def get_completion(self, context):
-        context = '\n'.join(context.split('\n')[-20:])
-
         url = "http://localhost:11434/api/chat"
 
-        usr_prompt = context
+        usr_prompt = f"<code>{context['snippet']}</code>\n\n\n<ref>symbols: {context['symbols']}</ref>"
+        print(f"{usr_prompt=}")
 
         messages = [{'role': 'system', 'content': sys_prompt},
                     {'role': 'user', 'content': usr_prompt}]
